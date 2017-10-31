@@ -97,7 +97,7 @@ def MyfileDecrypt(filepath,ct,IV,key,ext):
     return message
 
 def MyRSAEncrypt(filepath,RSA_Publickey_filepath):
-    ct,IV,key,ext = MyfileEncrypt(filepath)
+    ct,IV,key,ext,file = MyfileEncrypt(filepath)
 
     key_file = open(RSA_Publickey_filepath,'rb')
     
@@ -114,7 +114,7 @@ def MyRSAEncrypt(filepath,RSA_Publickey_filepath):
             label=None
             )
         )
-    return RSAc,ct,IV,ext
+    return RSAc,ct,IV,ext,file
 
 def MyRSADecrypt(RSAc,ct,IV,filename,ext,RSA_Privatekey_filepath):
     key_file = open(RSA_Privatekey_filepath,'rb')
@@ -134,12 +134,12 @@ def MyRSADecrypt(RSAc,ct,IV,filename,ext,RSA_Privatekey_filepath):
         )
     MyfileDecrypt(filename,ct,IV,key,ext)
 #filename = 'Picture.jpg'
-cipher,IV, key, ext, filename = MyfileEncrypt('Picture.jpg')
-MyfileDecrypt(filename, cipher, IV,key, ext)
+#cipher,IV, key, ext, filename = MyfileEncrypt('Picture.jpg')
+#MyfileDecrypt(filename, cipher, IV,key, ext)
 
 #keys()
 
-#RSAcipher,ct,IV,ext = MyRSAEncrypt(filename,'public_key.pem')
-#MyRSADecrypt(RSAcipher,ct,IV,filename,ext,'private_key.pem')
+RSAcipher,ct,IV,ext,file = MyRSAEncrypt('Picture.jpg','public_key.pem')
+MyRSADecrypt(RSAcipher,ct,IV,file,ext,'private_key.pem')
     
 
