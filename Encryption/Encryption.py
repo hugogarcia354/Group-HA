@@ -7,98 +7,135 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 import cryptography.hazmat.primitives.asymmetric as asymm
 from pathlib import Path
 
+
+#generate public and private keys
 def keys():
+
+    #generate RSA key
     key = rsa.generate_private_key(
         public_exponent=65537,
         key_size=2048,
         backend=default_backend()
     )
+
+    #create a private key from the RSA key
     private_key = key.private_bytes(
             encoding=serialization.Encoding.PEM,
             format=serialization.PrivateFormat.TraditionalOpenSSL,
             encryption_algorithm=serialization.NoEncryption()
     )
 
+    #save the private key as a .pem file
     f = open('private_key.pem','wb')
     f.write(private_key)
     f.close()
 
+    #create a public key from the RSA key
     public = key.public_key()
     public_key = public.public_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PublicFormat.SubjectPublicKeyInfo
     )
 
+    #save the public key as a .pem file
     f = open('public_key.pem','wb')
     f.write(public_key)
     f.close()
 
+    #encrypt message
 def MyEncrypt(message,key):
+    #verify that the key is at least 32 bytes
     if(len(key)< 32):
         return "Error: Short Key"
+    #create 16 byte random IV.
     IV = os.urandom(16)
     backend = default_backend()
+    #pad message to 128 bits
     padder = padding.PKCS7(128).padder()
     messagePadded = padder.update(message)
     messagePadded += padder.finalize()
+    #initiate cipher with key and IV
     cipher = Cipher(algorithms.AES(key), modes.CBC(IV), backend=backend)
     encryptor = cipher.encryptor()
+    #encrypt message
     ct = encryptor.update(messagePadded) + encryptor.finalize()
     return ct,IV
     
+#decrypt message
 def MyDecrypt(ct,IV,key):
     unpadder = padding.PKCS7(128).unpadder()
     backend = default_backend()
+    #initiate cipher with key and IV
     cipher = Cipher(algorithms.AES(key), modes.CBC(IV), backend=backend)
+    #decrypt message
     decryptor = cipher.decryptor()
     message = decryptor.update(ct) + decryptor.finalize()
+    #unpad message
     message = unpadder.update(message)
     message += unpadder.finalize()
     return message
 
+#encrypt a file
 def MyfileEncrypt(filepath):
-   
+   #get type of file
     ext = Path(filepath).suffix
+    #get file name
+    filename = Path(filepath).stem
+    #check if text file, if so then encode to byte
     if(ext =='.txt'):
         f = open(filepath,'r')
         content = f.read()
         content=content.encode()
-        filepath = 'fooE.txt'
-    elif(ext == '.jpg'):
+        #attach encr to name
+        filename=filename+'_Encr'+ext
+        filepath = filename
+    #else it assumes its a byte file
+    else:
         f = open(filepath,'rb')
         content = f.read()
-        filepath = 'fooE.jpg'
-    else:
-        print("Cannot encrypt filetype.")
+        #attach encr to name
+        filename=filename+'_Encr'+ext
+        filepath = filename
     f.close()
+    #generate key
     key = os.urandom(32)
+    #encrypt
     ct,IV = MyEncrypt(content,key)
+    #write encrypted file
     f = open(filepath,'wb')
     f.write(ct)
     f.close()
-    return ct,IV,key,ext,filepath
+    return ct,IV,key,ext
     
+#decrypt a file
 def MyfileDecrypt(filepath,ct,IV,key,ext):
+    #open file and read
     f = open(filepath,'rb')
     content = f.read()
     f.close()
+    #decrypt message
     message = MyDecrypt(content,IV,key)
+    #add decr to name
+    filename = Path(filepath).stem
+    filename= filename +'_Decr'+ext
+    #check if file type is text, is so, decode then write
     if(ext == '.txt'):
         message = message.decode()
-        f = open('fooD.txt','w')
+        f = open(filename,'w')
         f.write(message)
         f.close()
-    elif(ext =='.jpg'):
-        f = open('fooD.jpg','wb')
-        f.write(message)
-        f.close()
+    #else just write
     else:
-        print("Cannot decrypt filetype.")
+        f = open(filename,'wb')
+        f.write(message)
+        f.close()
     return message
 
+#encrypt using RSA
 def MyRSAEncrypt(filepath,RSA_Publickey_filepath):
-    ct,IV,key,ext,file = MyfileEncrypt(filepath)
-
+    #encrypt file
+    ct,IV,key,ext = MyfileEncrypt(filepath)
+    #load public key file
     key_file = open(RSA_Publickey_filepath,'rb')
     
     public_key = serialization.load_pem_public_key(
@@ -106,6 +143,7 @@ def MyRSAEncrypt(filepath,RSA_Publickey_filepath):
         backend=default_backend()
         )
     key_file.close()
+    #encrypt using OAEP
     RSAc = public_key.encrypt(
         key,
         asymm.padding.OAEP(
@@ -114,9 +152,11 @@ def MyRSAEncrypt(filepath,RSA_Publickey_filepath):
             label=None
             )
         )
-    return RSAc,ct,IV,ext,file
+    return RSAc,ct,IV,ext
 
+#decrypt RSA encryption 
 def MyRSADecrypt(RSAc,ct,IV,filename,ext,RSA_Privatekey_filepath):
+    #load private key
     key_file = open(RSA_Privatekey_filepath,'rb')
     private_key = serialization.load_pem_private_key(
         key_file.read(),
@@ -124,6 +164,7 @@ def MyRSADecrypt(RSAc,ct,IV,filename,ext,RSA_Privatekey_filepath):
         backend=default_backend()
         )
     key_file.close()
+    #decrypt using private key
     key = private_key.decrypt(
         RSAc,
         asymm.padding.OAEP(
@@ -132,14 +173,18 @@ def MyRSADecrypt(RSAc,ct,IV,filename,ext,RSA_Privatekey_filepath):
                 label=None
                 )
         )
+    #decrypt file
     MyfileDecrypt(filename,ct,IV,key,ext)
-#filename = 'Picture.jpg'
-#cipher,IV, key, ext, filename = MyfileEncrypt('Picture.jpg')
-#MyfileDecrypt(filename, cipher, IV,key, ext)
 
+#generate keys
 #keys()
 
-RSAcipher,ct,IV,ext,file = MyRSAEncrypt('Picture.jpg','public_key.pem')
-MyRSADecrypt(RSAcipher,ct,IV,file,ext,'private_key.pem')
-    
-
+filename = 'test.txt'
+RSAcipher,ct,IV,ext = MyRSAEncrypt(filename,'public_key.pem')
+filename=Path(filename).stem +"_Encr"+ ext
+MyRSADecrypt(RSAcipher,ct,IV,filename,ext,'private_key.pem')
+ 
+"""filename = 'Picture.jpg'
+cipher,IV, key, ext = MyfileEncrypt(filename)
+filename=Path(filename).stem +"_Encr"+ ext
+MyfileDecrypt(filename, cipher, IV,key, ext)"""
