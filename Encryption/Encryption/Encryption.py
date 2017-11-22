@@ -329,14 +329,47 @@ def MyRSADecryptMAC(RSAc,ct,IV,tag,filename,ext,RSA_Privatekey_filepath):
     #decrypt file
     MyfileDecryptMAC(filename,ct,IV,tag,EncKey,HMACKey,ext)
 
+def KeyHolder():
+    public_key = 'public_key.pem'
+    private_key = 'private_key.pem'
+    public_bool = False
+    private_bool = False
+    with os.scandir('.') as it:
+        for entry in it:
+            if not entry.name.startswith('.') and entry.is_file():
+                if(entry.name =='public_key.pem'):
+                    public_bool = True
+                elif(entry.name == 'private_key.pem'):
+                    private_bool = True
+        print(private_bool)
+        print(public_bool)
+    if(public_bool == False or private_bool == False):
+        print("The did not exist!")
+        keys()
+    return public_key,private_key
+        
+
+
+
 #generate keys
 #keys()
 
+
+
+public_key,private_key = KeyHolder()
+filename = 'Picture.jpg'
+RSAcipher,ct,IV,tag,ext = MyRSAEncryptMAC(filename,public_key)
+filename=Path(filename).stem +"_Encr"+ ext
+MyRSADecryptMAC(RSAcipher,ct,IV,tag,filename,ext,private_key)
+
+
+#test rsa-MAC
+"""
 filename = 'Picture.jpg'
 RSAcipher,ct,IV,tag,ext = MyRSAEncryptMAC(filename,'public_key.pem')
 filename=Path(filename).stem +"_Encr"+ ext
 MyRSADecryptMAC(RSAcipher,ct,IV,tag,filename,ext,'private_key.pem')
-
+"""
 
 #test file-mac
 """
